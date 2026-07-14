@@ -24,6 +24,9 @@ npx expo start --ios    # Start with iOS simulator
 npx expo start --android # Start with Android emulator
 npx expo start --web    # Start web browser build
 npx expo lint           # Lint (uses Expo's built-in ESLint config)
+
+# DB 型の再生成（スキーマ変更後。src/lib/database.types.ts は自動生成・手編集不可）
+npx supabase gen types typescript --linked > src/lib/database.types.ts
 ```
 
 No test runner is configured yet.
