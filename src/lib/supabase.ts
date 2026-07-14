@@ -3,6 +3,8 @@ import "react-native-url-polyfill/auto";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient } from "@supabase/supabase-js";
 
+import type { Database } from "@/lib/database.types";
+
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -14,9 +16,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-// TODO: DB スキーマ確定後に `npx supabase gen types typescript` で型を生成し、
-//       createClient<Database> の型引数として渡す。
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+// Database 型は Supabase CLI で自動生成（src/lib/database.types.ts）。
+// 再生成コマンド: npx supabase gen types typescript --linked > src/lib/database.types.ts
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,
