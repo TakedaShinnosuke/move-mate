@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -17,8 +17,13 @@ import {
   exerciseLabel,
   type ExerciseId,
 } from "@/features/strength/exercises";
+import { HistoryView } from "@/features/strength/history-view";
+import { useWorkoutHistory } from "@/features/strength/use-workout-history";
 import { useWorkoutLog, type WorkoutSet } from "@/features/strength/use-workout-log";
 import { useTheme } from "@/hooks/use-theme";
+
+// 画面上部のセグメント切り替えのモード。
+type Mode = "record" | "history";
 
 // 数値文字列を number に変換する。空文字・非数値は undefined（不正）を返す。
 function parseNumber(text: string): number | undefined {
@@ -31,6 +36,21 @@ function parseNumber(text: string): number | undefined {
 export default function StrengthScreen() {
   const theme = useTheme();
   const { todaySets, isLoading, isSaving, lastSetNumber, saveSet } = useWorkoutLog();
+  const {
+    history,
+    isLoading: isHistoryLoading,
+    error: historyError,
+    reload: reloadHistory,
+  } = useWorkoutHistory();
+
+  // 記録フォームと履歴ビューの切り替え。
+  const [mode, setMode] = useState<Mode>("record");
+
+  // 履歴タブへ切り替えたタイミングで再取得し、直前の保存を反映させる。
+  // reload は .then 内でのみ setState するため、effect の同期実行では state を変えない。
+  useEffect(() => {
+    if (mode === "history") void reloadHistory();
+  }, [mode, reloadHistory]);
 
   // 種目・重量・回数はセット保存後も保持し、連続入力の手数を減らす。
   const [exercise, setExercise] = useState<ExerciseId>(EXERCISES[0].id);
@@ -81,10 +101,31 @@ export default function StrengthScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={["top"]}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled">
-          {/* 種目選択（12種目・チップ。片手操作しやすい大きめのタップ領域） */}
+        {/* 記録 / 履歴 のセグメント切り替え */}
+        <ThemedView type="backgroundElement" style={styles.segment}>
+          <SegmentButton
+            label="記録"
+            selected={mode === "record"}
+            onPress={() => setMode("record")}
+          />
+          <SegmentButton
+            label="履歴"
+            selected={mode === "history"}
+            onPress={() => setMode("history")}
+          />
+        </ThemedView>
+
+        {mode === "history" ? (
+          <HistoryView
+            history={history}
+            isLoading={isHistoryLoading}
+            error={historyError}
+          />
+        ) : (
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled">
+            {/* 種目選択（12種目・チップ。片手操作しやすい大きめのタップ領域） */}
           <ThemedView type="backgroundElement" style={styles.card}>
             <ThemedText type="smallBold" themeColor="textSecondary">
               種目
@@ -196,9 +237,35 @@ export default function StrengthScreen() {
               [...todaySets].reverse().map((set) => <SetRow key={set.id} set={set} />)
             )}
           </ThemedView>
-        </ScrollView>
+          </ScrollView>
+        )}
       </SafeAreaView>
     </ThemedView>
+  );
+}
+
+// セグメント切り替えの 1 ボタン。選択時は backgroundSelected で塗る。
+function SegmentButton({
+  label,
+  selected,
+  onPress,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.segmentButton,
+        { backgroundColor: selected ? theme.backgroundSelected : "transparent" },
+      ]}>
+      <ThemedText type="smallBold" themeColor={selected ? "text" : "textSecondary"}>
+        {label}
+      </ThemedText>
+    </Pressable>
   );
 }
 
@@ -223,6 +290,20 @@ const styles = StyleSheet.create({
     flex: 1,
     alignSelf: "stretch",
     maxWidth: MaxContentWidth,
+  },
+  segment: {
+    flexDirection: "row",
+    margin: Spacing.four,
+    marginBottom: 0,
+    padding: Spacing.half,
+    borderRadius: Spacing.three,
+    gap: Spacing.half,
+  },
+  segmentButton: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: Spacing.two,
+    borderRadius: Spacing.two,
   },
   scrollContent: {
     padding: Spacing.four,
